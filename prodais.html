@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProDAIS | AI协作引导系统 - 交互演示</title>
+    <!-- 引入 React 和 ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- 引入 Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,800;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- 引入 Lucide 图标 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        modern: {
+                            bg: '#f4f7fe',
+                            card: '#ffffff',
+                            primary: '#7c3aed',
+                            success: '#10b981',
+                            warning: '#f59e0b',
+                            text: '#1e293b',
+                            subtext: '#64748b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease;
+            overflow-x: hidden;
+        }
+        
+        .font-serif-brand {
+            font-family: 'Playfair Display', serif;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* --- 学生端：新粗野主义 (Neo-Brutalism) --- */
+        .theme-brutal {
+            --bg-color: #fcfbf9;
+            --grid-color: #e5e5e5;
+            --brand-yellow: #fde047;
+            --brand-pink: #fbcfe8;
+            --brand-blue: #bfdbfe;
+            --border-color: #111827;
+            
+            background-color: var(--bg-color);
+            background-image: 
+                linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+            background-size: 24px 24px;
+            color: var(--border-color);
+            min-height: 100vh;
+        }
+
+        .theme-brutal .brutal-card {
+            background-color: white;
+            border: 3px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 6px 6px 0px var(--border-color);
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+
+        .theme-brutal .brutal-btn {
+            background-color: var(--border-color);
+            color: white;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+            transition: all 0.1s ease;
+        }
+
+        .theme-brutal .brutal-btn:hover:not(:disabled) {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+        }
+        
+        .theme-brutal .brutal-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .theme-brutal .highlight-text {
+            background-color: var(--brand-yellow);
+            padding: 0 8px;
+            border: 2px solid var(--border-color);
+            box-shadow: 2px 2px 0px var(--border-color);
+            display: inline-block;
+            transform: rotate(-1deg);
+        }
+
+        /* --- 教师端：现代 SaaS (Modern Soft) --- */
+        .theme-modern {
+            background-color: #f4f7fe;
+            color: #1e293b;
+            min-height: 100vh;
+        }
+
+        .theme-modern .modern-card {
+            background-color: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+            border: 1px solid rgba(255,255,255,0.5);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .theme-modern .modern-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.06);
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        .slide-in-right {
+            animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // 初始对话数据
+        const INITIAL_TRANSCRIPT = [
+            { id: 1, speaker: "张明", role: "student", text: "我觉得最主要的原因还是人类活动，特别是工业革命之后。", time: "10:15" },
+            { id: 2, speaker: "李华", role: "student", text: "同意，化石燃料的大量使用释放了太多二氧化碳。", time: "10:16" },
+            { id: 3, speaker: "ProDAIS助手", role: "ai", text: "检测到关键词[化石燃料]，是否需要展示相关数据图表辅助讨论？", time: "10:16" },
+            { id: 4, speaker: "张明", role: "student", text: "不仅是二氧化碳，还有甲烷等其他温室气体。赵雪，你怎么看？", time: "10:17" }
+        ];
+
+        // ==========================================
+        // 学生端组件 (Neo-Brutalism Style)
+        // ==========================================
+        const StudentView = ({ chatData, setChatData, isSilent, setIsSilent }) => {
+            const [inputValue, setInputValue] = useState("");
+            const chatEndRef = useRef(null);
+
+            useEffect(() => {
+                chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [chatData]);
+
+            const handleAIPromptClick = () => {
+                setInputValue("如果是从海洋生态的角度来看，那么...");
+            };
+
+            const handleSendMessage = (e) => {
+                e.preventDefault();
+                if (!inputValue.trim()) return;
+
+                const newMessage = {
+                    id: Date.now(),
+                    speaker: "赵雪",
+                    role: "student",
+                    isMe: true,
+                    text: inputValue,
+                    time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+                };
+
+                setChatData([...chatData, newMessage]);
+                setInputValue("");
+                setIsSilent(false); 
+            };
+
+            return (
+                <div className="flex flex-col min-h-screen pb-16">
+                    <nav className="flex items-center justify-between p-4 border-b-4 border-black bg-white sticky top-0 z-40">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-yellow-400 border-2 border-black shadow-[2px_2px_0px_#000] flex items-center justify-center font-bold text-xl">P</div>
+                            <span className="font-serif-brand text-2xl font-bold tracking-tight">ProDAIS</span>
+                            <span className="ml-4 px-2 py-1 bg-black text-white text-xs font-bold rounded">学生端</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="text-sm font-bold text-right hidden sm:block">
+                                <div>欢迎, 赵雪</div>
+                                <div className="text-gray-500 text-xs">第一组：探索者</div>
+                            </div>
+                            <div className="w-10 h-10 rounded-full border-2 border-black bg-blue-200 flex items-center justify-center font-bold text-lg shadow-[2px_2px_0px_#000]">👩‍🎓</div>
+                        </div>
+                    </nav>
+
+                    <main className="flex-1 max-w-6xl mx-auto w-full p-4 md:p-8 mt-2">
+                        <div className="mb-6">
+                            <h1 className="text-3xl md:text-5xl font-bold font-serif-brand leading-tight mb-4">
+                                AI 与专家引导你的讨论。<br/>
+                                <span className="highlight-text mt-2">不仅是聊天。</span>
+                            </h1>
+                            <p className="font-bold text-base text-gray-700 max-w-2xl">
+                                当前议题：<span className="underline decoration-wavy decoration-blue-500 text-black">气候变化的主要原因</span>。
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="col-span-1 flex flex-col gap-6">
+                                {/* 动态沉默干预卡片 */}
+                                {isSilent ? (
+                                    <div className="brutal-card bg-pink-200 p-5 relative transform -rotate-1 transition-all duration-300">
+                                        <div className="absolute -top-4 -right-4 w-12 h-12 bg-white rounded-full border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_#000] text-xl animate-bounce">🤫</div>
+                                        <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
+                                            <i data-lucide="sparkles" className="w-5 h-5"></i>
+                                            AI 私语提示
+                                        </h3>
+                                        <p className="text-sm font-bold text-gray-800 mb-4">
+                                            你已经倾听了 <span className="text-red-600">8 分钟</span> 啦！张明刚刚提到了“温室气体”，试着从你最熟悉的<span className="bg-yellow-300 px-1 border border-black rounded mx-1">海洋生态</span>角度补充一点？
+                                        </p>
+                                        <div className="flex flex-col gap-2">
+                                            <button onClick={handleAIPromptClick} className="brutal-btn w-full text-sm bg-black text-white flex justify-center items-center gap-2 hover:bg-gray-800">
+                                                💡 使用"如果...那么..."框架发言
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="brutal-card bg-green-200 p-5 relative transform rotate-1 transition-all duration-300">
+                                        <div className="absolute -top-4 -right-4 w-12 h-12 bg-white rounded-full border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_#000] text-xl">🎉</div>
+                                        <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
+                                            <i data-lucide="check-circle" className="w-5 h-5"></i>
+                                            表现很棒！
+                                        </h3>
+                                        <p className="text-sm font-bold text-gray-800">
+                                            你成功打破了沉默，提出的观点为小组带来了新的启发。你的协作评分正在上升！
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* 头脑风暴模块 */}
+                                <div className="brutal-card bg-blue-100 p-5">
+                                    <h3 className="font-bold text-lg mb-4 border-b-2 border-black pb-2 flex items-center gap-2">
+                                        <i data-lucide="zap" className="w-5 h-5 text-yellow-500 fill-current"></i>
+                                        头脑风暴墙
+                                    </h3>
+                                    <p className="text-sm font-bold text-gray-700 mb-4">
+                                        <span className="bg-white px-1 border border-black rounded shadow-[1px_1px_0px_#000] mr-1">目标</span> 提出至少3个未被提及的温室气体来源。
+                                    </p>
+                                    <div className="space-y-3 mb-5">
+                                        <div className="bg-white border-2 border-black p-2.5 rounded text-sm font-bold shadow-[2px_2px_0px_#000] flex justify-between items-center transform -rotate-1">
+                                            <span>🔥 畜牧业甲烷排放</span>
+                                            <span className="text-xs text-gray-500 bg-gray-100 px-1 border border-gray-300 rounded">李华</span>
+                                        </div>
+                                        <div className="bg-white border-2 border-black p-2.5 rounded text-sm font-bold shadow-[2px_2px_0px_#000] flex justify-between items-center transform rotate-1">
+                                            <span>🔥 冻土融化释放</span>
+                                            <span className="text-xs text-gray-500 bg-gray-100 px-1 border border-gray-300 rounded">王磊</span>
+                                        </div>
+                                    </div>
+                                    <button className="brutal-btn w-full text-sm bg-yellow-400 text-black border-2 border-black shadow-[2px_2px_0px_#000] hover:bg-yellow-300 flex justify-center items-center gap-2">
+                                        <i data-lucide="lightbulb" className="w-4 h-4"></i>
+                                        我有一个新 Idea！
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 白板聊天区 */}
+                            <div className="col-span-1 lg:col-span-2 brutal-card bg-white flex flex-col h-[550px]">
+                                <div className="p-4 border-b-4 border-black bg-yellow-100 flex justify-between items-center z-10">
+                                    <h2 className="text-lg font-bold font-serif-brand flex items-center gap-2">
+                                        <span className="relative flex h-3 w-3">
+                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                        </span>
+                                        实时讨论白板
+                                    </h2>
+                                    <span className="font-bold text-sm bg-white border-2 border-black px-2 py-0.5 shadow-[2px_2px_0px_#000]">阶段剩余: 15:24</span>
+                                </div>
+                                
+                                <div className="flex-1 p-4 md:p-6 overflow-y-auto space-y-5 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0wLDI0IEwyNCwyNCBNMjQsMCBMMjQsMjQiIHN0cm9rZT0iI2Y1ZjVmNSIgc3Ryb2tlLXdpZHRoPSIxIiBmaWxsPSJub25lIi8+Cjwvc3ZnPg==')]">
+                                    {chatData.map((msg) => {
+                                        if (msg.role === 'ai') {
+                                            return (
+                                                <div key={msg.id} className="flex justify-center my-2">
+                                                    <div className="bg-white border-2 border-black px-4 py-2 rounded font-bold text-sm shadow-[2px_2px_0px_#000] text-purple-700 max-w-[80%] text-center">
+                                                        🤖 {msg.text}
+                                                    </div>
+                                                </div>
+                                            )
+                                        }
+                                        if (msg.role === 'teacher') {
+                                            return (
+                                                <div key={msg.id} className="flex gap-3 items-start my-4">
+                                                    <div className="w-10 h-10 rounded-full border-2 border-black flex items-center justify-center font-bold text-lg shrink-0 shadow-[2px_2px_0px_#000] bg-red-200 text-red-700">师</div>
+                                                    <div className="max-w-[70%]">
+                                                        <div className="text-xs font-bold text-red-600 mb-1">王老师 • {msg.time} • 教师介入</div>
+                                                        <div className="p-3 rounded-lg border-2 border-black font-semibold text-sm shadow-[2px_2px_0px_#000] bg-red-50">
+                                                            {msg.text}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )
+                                        }
+                                        const isMe = msg.speaker === "赵雪";
+                                        return (
+                                            <div key={msg.id} className={`flex gap-3 items-start ${isMe ? 'flex-row-reverse' : ''}`}>
+                                                <div className={`w-10 h-10 rounded-full border-2 border-black flex items-center justify-center font-bold text-sm shrink-0 shadow-[2px_2px_0px_#000] ${isMe ? 'bg-yellow-300' : 'bg-gray-100'}`}>
+                                                    {msg.speaker[0]}
+                                                </div>
+                                                <div className={`max-w-[70%] ${isMe ? 'text-right' : ''}`}>
+                                                    <div className="text-xs font-bold text-gray-500 mb-1">{msg.speaker} • {msg.time}</div>
+                                                    <div className={`p-3 rounded-lg border-2 border-black font-semibold text-sm shadow-[2px_2px_0px_#000] ${isMe ? 'bg-yellow-100' : 'bg-white text-left'}`}>
+                                                        {msg.text}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                    <div ref={chatEndRef} />
+                                </div>
+                                
+                                <form onSubmit={handleSendMessage} className="p-3 md:p-4 border-t-4 border-black bg-white flex gap-2 items-center z-10 relative">
+                                    <button type="button" className="w-10 h-10 md:w-12 md:h-12 shrink-0 rounded-full bg-red-500 border-2 border-black flex justify-center items-center text-white shadow-[2px_2px_0px_#000] hover:transform hover:translate-y-1">
+                                        <i data-lucide="mic" className="w-4 h-4 md:w-5 md:h-5"></i>
+                                    </button>
+                                    <input 
+                                        type="text" 
+                                        value={inputValue}
+                                        onChange={(e) => setInputValue(e.target.value)}
+                                        placeholder="输入观点，打破沉默..." 
+                                        className="flex-1 border-2 border-black rounded-full px-4 py-2 md:py-3 font-bold text-sm focus:outline-none focus:ring-2 ring-yellow-400" 
+                                    />
+                                    <button type="submit" disabled={!inputValue.trim()} className="brutal-btn bg-blue-500 border-black px-4 md:px-6 h-10 md:h-12 flex items-center shrink-0">
+                                        发送
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        {/* 总结与下一个话题并列模块 */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                            <div className="brutal-card bg-purple-100 p-5 md:p-6">
+                                <h3 className="font-bold text-lg mb-4 border-b-2 border-black pb-2 flex items-center gap-2">
+                                    <i data-lucide="file-text" className="w-5 h-5"></i>
+                                    AI 阶段总结
+                                </h3>
+                                <ul className="space-y-3 text-sm font-bold text-gray-800">
+                                    <li className="flex items-start gap-2">
+                                        <span className="bg-green-300 px-2 py-0.5 border-2 border-black rounded shadow-[1px_1px_0px_#000] shrink-0 transform -rotate-2">已达成共识</span> 
+                                        <span className="mt-0.5">工业革命后的人类活动是气候变化的核心驱动力。</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="bg-yellow-300 px-2 py-0.5 border-2 border-black rounded shadow-[1px_1px_0px_#000] shrink-0 transform rotate-1">关键证据</span> 
+                                        <span className="mt-0.5">化石燃料的大量使用导致二氧化碳浓度急剧翻倍。</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="bg-pink-300 px-2 py-0.5 border-2 border-black rounded shadow-[1px_1px_0px_#000] shrink-0 transform -rotate-1">待解决问题</span> 
+                                        <span className="mt-0.5">自然循环周期在整体气候变化中扮演的比重究竟有多大？</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div className="brutal-card bg-emerald-100 p-5 md:p-6 flex flex-col justify-between">
+                                <div>
+                                    <h3 className="font-bold text-lg mb-4 border-b-2 border-black pb-2 flex items-center gap-2">
+                                        <i data-lucide="arrow-right-circle" className="w-5 h-5"></i>
+                                        下一个话题预告
+                                    </h3>
+                                    <div className="bg-white border-2 border-black p-4 rounded-lg shadow-[4px_4px_0px_#000] mb-5 transform rotate-1 hover:rotate-0 transition-transform cursor-pointer">
+                                        <h4 className="font-black text-lg mb-1">应对策略与限制化石燃料</h4>
+                                        <p className="text-sm font-semibold text-gray-600 mt-2">
+                                            接下来我们将探讨如何从政策和技术的双重角度，切实限制温室气体的排放。
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between bg-white/50 p-2 rounded border border-black/20">
+                                    <span className="text-sm font-bold flex items-center gap-2">
+                                        全组准备进度: 
+                                        <span className="bg-black text-white px-2 py-0.5 rounded-full">3 / 4</span>
+                                    </span>
+                                    <button className="brutal-btn text-sm bg-black text-white hover:bg-gray-800 shadow-[2px_2px_0px_rgba(0,0,0,0.5)]">
+                                        🙋 准备完毕
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        // ==========================================
+        // 教师端组件 (Modern Soft SaaS Style)
+        // ==========================================
+        const TeacherView = ({ chatData, setChatData, isSilent }) => {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [showMonitor, setShowMonitor] = useState(false);
+            const [teacherInput, setTeacherInput] = useState("");
+            const [isPaused, setIsPaused] = useState(false);
+            const chatEndRef = useRef(null);
+
+            useEffect(() => {
+                if(showMonitor) {
+                    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+                }
+            }, [chatData, showMonitor]);
+
+            // 每次切换Tab时，重新渲染Lucide图标
+            useEffect(() => {
+                lucide.createIcons();
+            }, [activeTab]);
+
+            // 教师发送广播/干预消息
+            const handleTeacherSend = (e) => {
+                e.preventDefault();
+                if (!teacherInput.trim()) return;
+                
+                const newMessage = {
+                    id: Date.now(),
+                    speaker: "王老师",
+                    role: "teacher",
+                    text: teacherInput,
+                    time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+                };
+
+                setChatData([...chatData, newMessage]);
+                setTeacherInput("");
+            };
+
+            // 模拟全班4个小组的全景数据
+            const panoramaGroups = [
+                {
+                    id: 1, name: "第一组：探索者",
+                    status: isSilent ? "alert" : "success",
+                    statusText: isSilent ? "沉默预警 (赵雪 8m)" : "讨论恢复健康",
+                    members: [{ name: "张明", active: true }, { name: "李华", active: true }, { name: "王磊", active: true }, { name: "赵雪", active: !isSilent, isAlert: isSilent }],
+                    aiSummary: "正在探讨工业革命与化石燃料的关联..."
+                },
+                {
+                    id: 2, name: "第二组：逻辑派", status: "perfect", statusText: "深度讨论中 (创造性 0.85)",
+                    members: [{ name: "刘星", active: true }, { name: "陈晨", active: true }, { name: "林浩", active: true }, { name: "周梅", active: true }],
+                    aiSummary: "已触发跨领域联想，逻辑严密。"
+                },
+                {
+                    id: 3, name: "第三组：破局者", status: "warning", statusText: "轻微偏离议题",
+                    members: [{ name: "孙浩", active: true }, { name: "郑琪", active: true }, { name: "马超", active: false }, { name: "吴菲", active: false }],
+                    aiSummary: "话题转向了周末电影，建议系统自动提示。"
+                },
+                {
+                    id: 4, name: "第四组：思考者", status: "success", statusText: "平稳推进",
+                    members: [{ name: "周杰", active: true }, { name: "吴亦", active: false }, { name: "郑好", active: true }, { name: "王维", active: true }],
+                    aiSummary: "正在整理第一阶段的讨论结果。"
+                }
+            ];
+
+            return (
+                <div className="flex min-h-screen relative overflow-hidden bg-modern-bg">
+                    {/* 左侧边栏 */}
+                    <aside className="w-20 bg-white border-r border-slate-100 flex flex-col items-center py-6 hidden md:flex sticky top-0 h-screen z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+                        {/* 修改这里：将 P 替换为了 layers 图标 */}
+                        <div className="w-10 h-10 bg-modern-primary rounded-xl flex items-center justify-center text-white font-bold mb-10 shadow-lg shadow-purple-200">
+                            <i data-lucide="layers" className="w-5 h-5"></i>
+                        </div>
+                        <nav className="flex flex-col gap-6 w-full items-center text-modern-subtext">
+                            <button onClick={() => setActiveTab('dashboard')} className={`p-3 rounded-xl transition-all ${activeTab === 'dashboard' ? 'text-modern-primary bg-purple-50 shadow-sm' : 'hover:text-modern-primary hover:bg-slate-50'}`}>
+                                <i data-lucide="layout-dashboard"></i>
+                            </button>
+                            <button onClick={() => setActiveTab('analytics')} className={`p-3 rounded-xl transition-all ${activeTab === 'analytics' ? 'text-modern-primary bg-purple-50 shadow-sm' : 'hover:text-modern-primary hover:bg-slate-50'}`}>
+                                <i data-lucide="bar-chart-2"></i>
+                            </button>
+                            <button onClick={() => setActiveTab('users')} className={`p-3 rounded-xl transition-all ${activeTab === 'users' ? 'text-modern-primary bg-purple-50 shadow-sm' : 'hover:text-modern-primary hover:bg-slate-50'}`}>
+                                <i data-lucide="users"></i>
+                            </button>
+                            <button onClick={() => setActiveTab('settings')} className={`p-3 rounded-xl transition-all ${activeTab === 'settings' ? 'text-modern-primary bg-purple-50 shadow-sm' : 'hover:text-modern-primary hover:bg-slate-50'}`}>
+                                <i data-lucide="settings"></i>
+                            </button>
+                        </nav>
+                    </aside>
+
+                    {/* 主内容区 */}
+                    <main className="flex-1 p-6 md:p-8 lg:p-10 max-w-[1600px] mx-auto w-full h-screen overflow-y-auto no-scrollbar">
+                        {/* 顶部全局控制台 - 任何Tab下都可见 */}
+                        <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8 bg-white p-5 md:p-6 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-100">
+                            <div className="flex items-center gap-5">
+                                {/* 换成了更高级的 3D 风格头像 */}
+                                <div className="w-14 h-14 rounded-full overflow-hidden border-4 border-slate-50 shadow-sm shrink-0 bg-blue-50">
+                                    <img src="https://api.dicebear.com/7.x/micah/svg?seed=Jessica&backgroundColor=f4f7fe" alt="Teacher Avatar" className="w-full h-full object-cover" />
+                                </div>
+                                <div>
+                                    <h1 className="text-2xl font-bold text-modern-text mb-1 flex items-center gap-2">
+                                        王老师的控制台 
+                                        <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">主班教师</span>
+                                    </h1>
+                                    <div className="flex items-center gap-3 text-sm text-modern-subtext font-medium">
+                                        <span className="flex items-center gap-1"><i data-lucide="book-open" className="w-4 h-4"></i> 气候与人类项目</span>
+                                        <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                        <span className="flex items-center gap-1 text-modern-primary"><i data-lucide="clock" className="w-4 h-4"></i> 当前议程：原因分析阶段</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-6">
+                                <div className="flex flex-col items-end">
+                                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">阶段剩余时间</span>
+                                    <div className="text-3xl font-black text-modern-text font-mono leading-none tracking-tight">15:24</div>
+                                </div>
+                                <div className="h-10 w-px bg-slate-200"></div>
+                                <button 
+                                    onClick={() => setIsPaused(!isPaused)}
+                                    className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-sm ${isPaused ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-modern-primary text-white hover:bg-purple-700'}`}
+                                >
+                                    <i data-lucide={isPaused ? "play" : "pause"} className="w-4 h-4"></i>
+                                    {isPaused ? '恢复全班讨论' : '暂停全班讨论'}
+                                </button>
+                            </div>
+                        </header>
+                        
+                        {/* 动态内容区：根据 activeTab 渲染不同页面 */}
+                        
+                        {/* 1. Dashboard Tab (原有的监控大盘) */}
+                        {activeTab === 'dashboard' && (
+                            <div className="fade-in">
+                                {/* 核心 KPI 行 */}
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+                                    <div className="modern-card p-5">
+                                        <h3 className="text-xs font-bold text-modern-subtext uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <i data-lucide="users" className="w-4 h-4 text-blue-500"></i> 活跃讨论组
+                                        </h3>
+                                        <div className="flex items-end gap-2">
+                                            <div className="text-3xl font-bold text-modern-text leading-none">4 <span className="text-lg text-slate-400 font-medium">/ 4</span></div>
+                                        </div>
+                                    </div>
+                                    <div className="modern-card p-5">
+                                        <h3 className="text-xs font-bold text-modern-subtext uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <i data-lucide="activity" className="w-4 h-4 text-emerald-500"></i> 全班参与度
+                                        </h3>
+                                        <div className="flex items-end gap-2">
+                                            <div className="text-3xl font-bold text-modern-text leading-none">{isSilent ? '85%' : '92%'}</div>
+                                            <span className="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full mb-1">+5%</span>
+                                        </div>
+                                    </div>
+                                    <div className={`modern-card p-5 transition-colors duration-500 ${isSilent ? 'bg-amber-50 border-amber-200' : ''}`}>
+                                        <h3 className={`text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2 ${isSilent ? 'text-amber-700' : 'text-modern-subtext'}`}>
+                                            <i data-lucide="bell" className={`w-4 h-4 ${isSilent ? 'text-amber-500' : 'text-slate-400'}`}></i> 待处理预警
+                                        </h3>
+                                        <div className="flex items-end gap-2">
+                                            <div className={`text-3xl font-bold leading-none ${isSilent ? 'text-amber-600' : 'text-modern-text'}`}>{isSilent ? '1' : '0'}</div>
+                                        </div>
+                                    </div>
+                                    <div className="modern-card p-5">
+                                        <h3 className="text-xs font-bold text-modern-subtext uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <i data-lucide="sparkles" className="w-4 h-4 text-purple-500"></i> 讨论质量分
+                                        </h3>
+                                        <div className="flex items-end gap-2">
+                                            <div className="text-3xl font-bold text-modern-text leading-none">{isSilent ? '89.5' : '94.2'}</div>
+                                            <span className="text-xs text-slate-400 font-medium mb-1">/ 100</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col lg:flex-row gap-6 md:gap-8 min-h-[500px]">
+                                    {/* 左侧：全班全景监控网格 (Panorama Grid) */}
+                                    <div className="flex-1 flex flex-col min-w-0">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h2 className="text-lg font-bold text-modern-text">各组全景概览</h2>
+                                            <div className="flex gap-2">
+                                                <span className="flex items-center gap-1 text-xs text-slate-500"><div className="w-2 h-2 rounded-full bg-emerald-400"></div> 健康</span>
+                                                <span className="flex items-center gap-1 text-xs text-slate-500"><div className="w-2 h-2 rounded-full bg-amber-400"></div> 需关注</span>
+                                                <span className="flex items-center gap-1 text-xs text-slate-500"><div className="w-2 h-2 rounded-full bg-red-400"></div> 严重问题</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {panoramaGroups.map(group => {
+                                                let borderColor = "border-slate-100 hover:border-slate-300";
+                                                let badgeColor = "bg-slate-100 text-slate-600";
+                                                let icon = <i data-lucide="check-circle-2" className="w-4 h-4 text-slate-500"></i>;
+
+                                                if (group.status === "alert") {
+                                                    borderColor = "border-red-300 shadow-[0_0_15px_rgba(239,68,68,0.1)]";
+                                                    badgeColor = "bg-red-50 text-red-600";
+                                                    icon = <i data-lucide="alert-circle" className="w-4 h-4 text-red-500"></i>;
+                                                } else if (group.status === "warning") {
+                                                    borderColor = "border-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.1)]";
+                                                    badgeColor = "bg-amber-50 text-amber-600";
+                                                    icon = <i data-lucide="triangle-alert" className="w-4 h-4 text-amber-500"></i>;
+                                                } else if (group.status === "perfect") {
+                                                    borderColor = "border-modern-primary/30 hover:border-modern-primary/60";
+                                                    badgeColor = "bg-purple-50 text-modern-primary";
+                                                    icon = <i data-lucide="flame" className="w-4 h-4 text-modern-primary fill-purple-100"></i>;
+                                                } else if (group.status === "success") {
+                                                    borderColor = "border-emerald-200 hover:border-emerald-300";
+                                                    badgeColor = "bg-emerald-50 text-emerald-600";
+                                                    icon = <i data-lucide="check-circle" className="w-4 h-4 text-emerald-500"></i>;
+                                                }
+
+                                                return (
+                                                    <div key={group.id} className={`modern-card p-5 border-2 transition-all duration-300 flex flex-col h-[220px] ${borderColor}`}>
+                                                        <div className="flex justify-between items-start mb-3">
+                                                            <h3 className="font-bold text-modern-text text-base">{group.name}</h3>
+                                                            <span className={`text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1.5 ${badgeColor}`}>
+                                                                {icon} {group.statusText}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex gap-2 mb-4 mt-2">
+                                                            {group.members.map((member, idx) => (
+                                                                <div key={idx} className="flex flex-col items-center gap-1 relative group/tooltip">
+                                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors duration-500 ${
+                                                                        member.isAlert ? 'bg-red-50 border-red-400 text-red-600 animate-pulse' : 
+                                                                        member.active ? 'bg-emerald-50 border-emerald-400 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-400'
+                                                                    }`}>
+                                                                        {member.name[0]}
+                                                                    </div>
+                                                                    <span className="absolute -bottom-6 opacity-0 group-hover/tooltip:opacity-100 text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded transition-opacity whitespace-nowrap z-10">
+                                                                        {member.name}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <div className="mt-auto bg-slate-50 rounded-lg p-3 border border-slate-100">
+                                                            <div className="text-[10px] font-bold text-purple-600 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                                                <i data-lucide="bot" className="w-3 h-3"></i> AI 实时速览
+                                                            </div>
+                                                            <p className="text-xs text-slate-600 line-clamp-2">{group.aiSummary}</p>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* 右侧：智能干预中心 */}
+                                    <div className="w-full lg:w-[380px] flex flex-col min-h-0">
+                                        <h2 className="text-lg font-bold text-modern-text mb-4">智能干预中心</h2>
+                                        <div className="modern-card flex-1 p-0 flex flex-col overflow-hidden border border-slate-200 min-h-[400px]">
+                                            <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                                                <span className="text-sm font-bold text-slate-700">通知流</span>
+                                                <span className="text-xs bg-white border border-slate-200 px-2 py-1 rounded text-slate-500">按优先级排序</span>
+                                            </div>
+                                            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/20 no-scrollbar">
+                                                {isSilent && (
+                                                    <div className="bg-white border-l-4 border-l-red-500 rounded-lg p-4 shadow-sm relative overflow-hidden">
+                                                        <div className="absolute top-0 right-0 bg-red-100 text-red-600 text-[10px] font-bold px-2 py-1 rounded-bl-lg">高优先级</div>
+                                                        <div className="flex items-center gap-2 mb-2 pr-16">
+                                                            <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center text-red-500 shrink-0">
+                                                                <i data-lucide="user-x" className="w-3 h-3"></i>
+                                                            </div>
+                                                            <span className="font-bold text-sm text-modern-text">第一组：沉默超限预警</span>
+                                                        </div>
+                                                        <p className="text-xs text-slate-600 mb-3 leading-relaxed">
+                                                            学生 <strong className="text-red-600">赵雪</strong> 已持续沉默超8分钟。系统已下发私语引导框架。
+                                                        </p>
+                                                        <button onClick={() => setShowMonitor(true)} className="w-full bg-red-500 text-white text-xs font-bold py-2 rounded-md shadow-sm hover:bg-red-600 transition-colors flex items-center justify-center gap-1">
+                                                            <i data-lucide="mic" className="w-3 h-3"></i> 立即介入指导
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                {!isSilent && (
+                                                    <div className="bg-white border-l-4 border-l-emerald-400 rounded-lg p-4 shadow-sm opacity-80">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-500 shrink-0">
+                                                                <i data-lucide="check" className="w-3 h-3"></i>
+                                                            </div>
+                                                            <span className="font-bold text-sm text-modern-text">第一组：恢复健康</span>
+                                                            <span className="text-[10px] text-slate-400 ml-auto">刚刚</span>
+                                                        </div>
+                                                        <p className="text-xs text-slate-600 mb-2">沉默警报解除。学生赵雪成功参与了讨论发言。</p>
+                                                    </div>
+                                                )}
+                                                <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center text-amber-500 shrink-0">
+                                                            <i data-lucide="navigation-off" className="w-3 h-3"></i>
+                                                        </div>
+                                                        <span className="font-bold text-sm text-modern-text">第三组：轻微偏题</span>
+                                                        <span className="text-[10px] text-slate-400 ml-auto">3分钟前</span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-600 mb-3">检测到高频词“周末、电影”，讨论可能偏离核心议题。</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 2. Analytics Tab (新增学情数据洞察) */}
+                        {activeTab === 'analytics' && (
+                            <div className="fade-in space-y-6">
+                                <h2 className="text-xl font-bold text-modern-text mb-4 flex items-center gap-2">
+                                    <i data-lucide="bar-chart-2" className="text-modern-primary"></i> 班级学情数据洞察
+                                </h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="modern-card p-6 border border-slate-100">
+                                        <h3 className="text-sm font-bold text-modern-subtext mb-6 uppercase tracking-wider">全班发言时长分布</h3>
+                                        <div className="flex items-end gap-3 h-48 border-b border-slate-100 pb-2 px-4">
+                                            {/* 模拟柱状图 */}
+                                            <div className="w-1/6 bg-modern-primary rounded-t-sm h-[80%] hover:opacity-80 transition-opacity cursor-pointer relative group">
+                                                <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">80%</span>
+                                            </div>
+                                            <div className="w-1/6 bg-emerald-400 rounded-t-sm h-[60%] hover:opacity-80 transition-opacity cursor-pointer relative group">
+                                                <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">60%</span>
+                                            </div>
+                                            <div className="w-1/6 bg-blue-400 rounded-t-sm h-[90%] hover:opacity-80 transition-opacity cursor-pointer relative group">
+                                                <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">90%</span>
+                                            </div>
+                                            <div className="w-1/6 bg-amber-400 rounded-t-sm h-[40%] hover:opacity-80 transition-opacity cursor-pointer relative group">
+                                                <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">40%</span>
+                                            </div>
+                                            <div className="w-1/6 bg-purple-400 rounded-t-sm h-[70%] hover:opacity-80 transition-opacity cursor-pointer relative group">
+                                                <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">70%</span>
+                                            </div>
+                                            <div className="w-1/6 bg-pink-400 rounded-t-sm h-[50%] hover:opacity-80 transition-opacity cursor-pointer relative group">
+                                                <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">50%</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-between text-[10px] text-slate-400 font-bold mt-2 px-4">
+                                            <span>张明</span><span>李华</span><span>刘星</span><span>赵雪</span><span>陈晨</span><span>林浩</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="modern-card p-6 border border-slate-100">
+                                        <h3 className="text-sm font-bold text-modern-subtext mb-6 uppercase tracking-wider">讨论质量分趋势 (近5节课)</h3>
+                                        <div className="h-48 relative border-b border-l border-slate-100 pl-4 pb-2">
+                                            <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
+                                                <path d="M0,80 L25,60 L50,65 L75,40 L100,20" fill="none" stroke="#10b981" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                                                <circle cx="0" cy="80" r="4" fill="#ffffff" stroke="#10b981" strokeWidth="2"/>
+                                                <circle cx="25" cy="60" r="4" fill="#ffffff" stroke="#10b981" strokeWidth="2"/>
+                                                <circle cx="50" cy="65" r="4" fill="#ffffff" stroke="#10b981" strokeWidth="2"/>
+                                                <circle cx="75" cy="40" r="4" fill="#ffffff" stroke="#10b981" strokeWidth="2"/>
+                                                <circle cx="100" cy="20" r="4" fill="#ffffff" stroke="#10b981" strokeWidth="2"/>
+                                            </svg>
+                                        </div>
+                                        <div className="flex justify-between text-[10px] text-slate-400 font-bold mt-2 pl-4">
+                                            <span>第1课</span><span>第2课</span><span>第3课</span><span>第4课</span><span>本节课</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 3. Users Tab (新增学生协作档案) */}
+                        {activeTab === 'users' && (
+                            <div className="fade-in">
+                                <h2 className="text-xl font-bold text-modern-text mb-4 flex items-center gap-2">
+                                    <i data-lucide="users" className="text-modern-primary"></i> 班级学生协作档案
+                                </h2>
+                                <div className="modern-card p-0 overflow-hidden border border-slate-200">
+                                    <table className="w-full text-left border-collapse min-w-[600px]">
+                                        <thead className="bg-slate-50 border-b border-slate-100 text-xs text-modern-subtext uppercase tracking-wider">
+                                            <tr>
+                                                <th className="p-4 font-bold">姓名</th>
+                                                <th className="p-4 font-bold">所属小组</th>
+                                                <th className="p-4 font-bold">综合活跃度</th>
+                                                <th className="p-4 font-bold">AI 评估表现与标签</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="text-sm">
+                                            <tr className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                                <td className="p-4 font-bold text-modern-text flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">张</div> 张明
+                                                </td>
+                                                <td className="p-4 text-slate-600 font-medium">第一组：探索者</td>
+                                                <td className="p-4"><span className="text-emerald-500 font-bold bg-emerald-50 px-2 py-1 rounded">高 (92%)</span></td>
+                                                <td className="p-4 text-slate-500 flex gap-2">
+                                                    <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs">主导者</span>
+                                                    <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs">逻辑清晰</span>
+                                                </td>
+                                            </tr>
+                                            <tr className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                                <td className="p-4 font-bold text-modern-text flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">赵</div> 赵雪
+                                                </td>
+                                                <td className="p-4 text-slate-600 font-medium">第一组：探索者</td>
+                                                <td className="p-4">
+                                                    {isSilent ? 
+                                                        <span className="text-red-500 font-bold bg-red-50 px-2 py-1 rounded">极低 (0%)</span> : 
+                                                        <span className="text-amber-500 font-bold bg-amber-50 px-2 py-1 rounded">中低 (45%)</span>
+                                                    }
+                                                </td>
+                                                <td className="p-4 text-slate-500 flex gap-2">
+                                                    <span className="bg-red-50 text-red-600 px-2 py-1 rounded text-xs border border-red-100">易沉默</span>
+                                                    {!isSilent && <span className="bg-emerald-50 text-emerald-600 px-2 py-1 rounded text-xs border border-emerald-100">有进步</span>}
+                                                </td>
+                                            </tr>
+                                            <tr className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                                <td className="p-4 font-bold text-modern-text flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center">刘</div> 刘星
+                                                </td>
+                                                <td className="p-4 text-slate-600 font-medium">第二组：逻辑派</td>
+                                                <td className="p-4"><span className="text-emerald-500 font-bold bg-emerald-50 px-2 py-1 rounded">极高 (98%)</span></td>
+                                                <td className="p-4 text-slate-500 flex gap-2">
+                                                    <span className="bg-purple-50 text-purple-600 px-2 py-1 rounded text-xs border border-purple-100">高创造性</span>
+                                                </td>
+                                            </tr>
+                                            <tr className="hover:bg-slate-50/50 transition-colors">
+                                                <td className="p-4 font-bold text-modern-text flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center">孙</div> 孙浩
+                                                </td>
+                                                <td className="p-4 text-slate-600 font-medium">第三组：破局者</td>
+                                                <td className="p-4"><span className="text-emerald-500 font-bold bg-emerald-50 px-2 py-1 rounded">高 (88%)</span></td>
+                                                <td className="p-4 text-slate-500 flex gap-2">
+                                                    <span className="bg-amber-50 text-amber-600 px-2 py-1 rounded text-xs border border-amber-100">易偏题</span>
+                                                    <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs">活跃分子</span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 4. Settings Tab (新增系统设置) */}
+                        {activeTab === 'settings' && (
+                            <div className="fade-in">
+                                <h2 className="text-xl font-bold text-modern-text mb-4 flex items-center gap-2">
+                                    <i data-lucide="settings" className="text-modern-primary"></i> 系统设置与 AI 偏好
+                                </h2>
+                                <div className="modern-card p-6 md:p-8 max-w-3xl space-y-8 border border-slate-200">
+                                    <div>
+                                        <h3 className="font-bold text-modern-text text-lg border-b border-slate-100 pb-2 mb-4">预警与干预设置</h3>
+                                        <div className="space-y-6">
+                                            <div className="flex justify-between items-center">
+                                                <div>
+                                                    <h4 className="font-bold text-modern-text">AI 沉默预警阈值</h4>
+                                                    <p className="text-xs text-slate-500 mt-1">当学生连续未发言达到此时长，控制台将触发红色预警</p>
+                                                </div>
+                                                <select className="border border-slate-200 rounded-lg p-2.5 text-sm outline-none font-bold text-modern-text bg-slate-50 focus:border-modern-primary focus:ring-2 ring-purple-100 transition-all cursor-pointer">
+                                                    <option>5 分钟</option>
+                                                    <option selected>8 分钟</option>
+                                                    <option>10 分钟</option>
+                                                </select>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <div>
+                                                    <h4 className="font-bold text-modern-text">自动下发私语提示卡片</h4>
+                                                    <p className="text-xs text-slate-500 mt-1">允许 AI 在沉默预警时自动向学生白板发送“如果...那么...”引导卡片</p>
+                                                </div>
+                                                <div className="w-12 h-7 bg-modern-primary rounded-full relative cursor-pointer shadow-inner">
+                                                    <div className="w-5 h-5 bg-white rounded-full absolute right-1 top-1 shadow-sm"></div>
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <div>
+                                                    <h4 className="font-bold text-modern-text">偏题自动纠正</h4>
+                                                    <p className="text-xs text-slate-500 mt-1">当小组讨论偏离核心议题时，AI 自动生成引导语拉回主线</p>
+                                                </div>
+                                                <div className="w-12 h-7 bg-slate-200 rounded-full relative cursor-pointer shadow-inner">
+                                                    <div className="w-5 h-5 bg-white rounded-full absolute left-1 top-1 shadow-sm"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h3 className="font-bold text-modern-text text-lg border-b border-slate-100 pb-2 mb-4">界面偏好</h3>
+                                        <div className="space-y-6">
+                                            <div className="flex justify-between items-center">
+                                                <div>
+                                                    <h4 className="font-bold text-modern-text">仅显示有预警的小组</h4>
+                                                    <p className="text-xs text-slate-500 mt-1">开启后，监控大盘将隐藏“健康”状态的小组，专注问题排查</p>
+                                                </div>
+                                                <div className="w-12 h-7 bg-slate-200 rounded-full relative cursor-pointer shadow-inner">
+                                                    <div className="w-5 h-5 bg-white rounded-full absolute left-1 top-1 shadow-sm"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="pt-4 flex justify-end">
+                                        <button className="bg-modern-primary text-white font-bold px-6 py-2.5 rounded-xl hover:bg-purple-700 transition-colors shadow-md">
+                                            保存设置更改
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* 右侧监听/干预面板 (Slide-out) */}
+                    {showMonitor && (
+                        <div className="absolute top-0 right-0 w-full md:w-[420px] h-full bg-white shadow-[-10px_0_40px_rgba(0,0,0,0.1)] border-l border-slate-200 z-50 flex flex-col slide-in-right">
+                            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white shadow-sm z-10">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold">1</div>
+                                    <div>
+                                        <h3 className="font-bold text-modern-text text-base">第一组：探索者</h3>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="flex h-2 w-2 relative">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                            </span>
+                                            <p className="text-xs text-modern-subtext font-medium">正在监听实时语音流</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button onClick={() => setShowMonitor(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
+                                    <i data-lucide="x" className="w-4 h-4"></i>
+                                </button>
+                            </div>
+                            
+                            <div className="flex-1 p-5 overflow-y-auto space-y-5 bg-slate-50/50 no-scrollbar">
+                                <div className="text-center">
+                                    <span className="text-[10px] font-bold text-slate-400 bg-white border border-slate-200 px-3 py-1 rounded-full">以上为历史记录，您已切入实时监听</span>
+                                </div>
+                                {chatData.map((msg) => (
+                                    <div key={msg.id} className={`flex flex-col ${msg.role === 'teacher' ? 'items-end' : 'items-start'}`}>
+                                        <span className="text-[10px] font-bold text-slate-400 mb-1 px-1">{msg.speaker} • {msg.time}</span>
+                                        <div className={`text-sm px-4 py-2.5 rounded-2xl max-w-[85%] font-medium leading-relaxed ${
+                                            msg.role === 'ai' ? 'bg-purple-50 text-purple-700 border border-purple-100' :
+                                            msg.role === 'teacher' ? 'bg-modern-primary text-white shadow-md rounded-br-sm' :
+                                            'bg-white border border-slate-200 text-slate-700 shadow-sm rounded-bl-sm'
+                                        }`}>
+                                            {msg.role === 'ai' && <i data-lucide="bot" className="w-3.5 h-3.5 inline mr-1.5 mb-0.5"></i>}
+                                            {msg.text}
+                                        </div>
+                                    </div>
+                                ))}
+                                <div ref={chatEndRef} />
+                            </div>
+
+                            <form onSubmit={handleTeacherSend} className="p-4 md:p-5 border-t border-slate-200 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+                                <div className="text-xs font-bold text-modern-subtext mb-3 flex justify-between items-center">
+                                    <span className="flex items-center gap-1.5"><i data-lucide="radio" className="w-3.5 h-3.5"></i> 下发指导至小组白板</span>
+                                    <span className="text-modern-primary cursor-pointer hover:underline flex items-center gap-1"><i data-lucide="layout-template" className="w-3 h-3"></i> 快捷模板</span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        value={teacherInput}
+                                        onChange={(e) => setTeacherInput(e.target.value)}
+                                        placeholder="例如：大家可以多听听赵雪的想法..." 
+                                        className="flex-1 border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-modern-primary focus:ring-4 ring-purple-50 transition-all"
+                                    />
+                                    <button type="submit" disabled={!teacherInput.trim()} className="bg-modern-primary text-white w-12 rounded-xl flex items-center justify-center disabled:opacity-50 transition-all hover:bg-purple-700 hover:shadow-lg hover:shadow-purple-200">
+                                        <i data-lucide="send" className="w-5 h-5"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // ==========================================
+        // 主应用 (状态容器)
+        // ==========================================
+        const App = () => {
+            const [role, setRole] = useState('student'); 
+            const [chatData, setChatData] = useState(INITIAL_TRANSCRIPT);
+            const [isSilent, setIsSilent] = useState(true);
+
+            useEffect(() => {
+                document.body.className = role === 'student' ? 'theme-brutal' : 'theme-modern';
+            }, [role]);
+
+            useEffect(() => {
+                lucide.createIcons();
+            });
+
+            return (
+                <div className="relative">
+                    {role === 'teacher' ? (
+                        <TeacherView chatData={chatData} setChatData={setChatData} isSilent={isSilent} />
+                    ) : (
+                        <StudentView chatData={chatData} setChatData={setChatData} isSilent={isSilent} setIsSilent={setIsSilent} />
+                    )}
+
+                    <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-2 font-sans group">
+                        <span className="text-xs font-medium text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity bg-white px-2 py-1 rounded shadow-sm border border-slate-200 hidden sm:block">
+                            点击切换体验视角
+                        </span>
+                        
+                        <button 
+                            onClick={() => setRole(role === 'teacher' ? 'student' : 'teacher')}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all ${
+                                role === 'teacher' 
+                                ? 'bg-white text-slate-700 border border-slate-200 shadow-lg hover:bg-slate-50 hover:border-modern-primary hover:text-modern-primary' 
+                                : 'bg-white text-black border-2 border-black shadow-[4px_4px_0px_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_#000]'
+                            }`}
+                        >
+                            <i data-lucide="arrow-left-right" className="w-4 h-4"></i>
+                            {role === 'teacher' ? '切换至学生端' : '切换至教师端'}
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
